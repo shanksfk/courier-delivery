@@ -1,0 +1,20 @@
+[
+    {
+        "coupon_name": "OFR001",
+        "weight_range": "70-200",
+        "distance_range": "0-200",
+        "discount_percentage": 10
+    },
+    {
+        "coupon_name": "OFR002",
+        "weight_range": "100-250",
+        "distance_range": "50-250",
+        "discount_percentage": 7
+    },
+    {
+        "coupon_name": "OFR003",
+        "weight_range": "10-150",
+        "distance_range": "50-250",
+        "discount_percentage": 5
+    }
+]
