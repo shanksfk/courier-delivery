@@ -7,6 +7,40 @@ from src.core.utils.package import create_package_trip
 
 logger = logging.getLogger(__name__)
 
+class IOHandler:
+
+
+
+
+class ProcessHandler:
+
+
+    def calculate_delivery_time(self, base_delivery_cost, packages, no_vehicles, max_weight, max_speed):
+        # this method is to process from input into calculations of trips, delivery_time
+        logger.debug(f'Processing data for calculations of delivery_time')
+        trips = create_package_trip(no_vehicles, packages, max_weight, max_speed)
+        calculator = Calculator(base_delivery_cost=base_delivery_cost,
+                                     rate_distance_cost=RATE_DISTANCE_COST, rate_weight_cost=RATE_WEIGHT_COST)
+        package_delivery_times = calculator.calculate_delivery_time(trips, packages, max_speed)
+        for package in package_delivery_times:
+            pkg_id = package[0]
+            weight_in_kg = package[1]
+            distance_in_km = package[2]
+            coupon = Coupon.get_coupon(package[3])
+            delivery_time = package[5]
+            if coupon and coupon.is_applicable(weight_in_kg, distance_in_km):
+                discount_percentage = coupon.discount_percentage
+            else:
+                discount_percentage = 0
+            discount_amount = calculator.discount_amount_calculator(discount_percentage)
+            total_cost = calculator.total_cost_calculator(distance_in_km, discount_percentage, weight_in_kg)
+            package.append(discount_amount)
+            package.append(total_cost)
+        return packages
+
+
+
+
 
 class CourierApp:
     def __init__(self):
@@ -136,5 +170,3 @@ class CourierApp:
 
         else:
             print("Invalid selection. Please restart the app and choose either '1' or '2'.")
-
-

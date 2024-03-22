@@ -1,49 +1,87 @@
-import pytest
+import unittest
 from src.core.calculator import Calculator
-
-@pytest.fixture
-def calculator():
-    return Calculator(rate_distance_cost=10, rate_weight_cost=5)
-
-def test_total_cost_no_discount(calculator):
-    assert calculator.total_cost_calculator(100, 5, 0, 10) == 150, "Cost calculation without discount failed"
-
-def test_total_cost_with_discount(calculator):
-    # Assuming 10% discount on a total cost of 150
-    assert calculator.total_cost_calculator(100, 5, 10, 10) == 135, "Cost calculation with discount failed"
-
-
-import pytest
 from src.courier_app import CourierApp
-from src.core.calculator import Calculator
-from src.core.coupon import Coupon
-from unittest.mock import patch
 
-class MockCoupon:
-    @staticmethod
-    def get_coupon(code):
-        if code == "OFR001":
-            return Coupon("OFR001", "0-50", "0-200", 10)
-        return None
 
-@pytest.fixture
-def courier_app():
-    app = CourierApp()
-    app.calculator = Calculator(rate_distance_cost=10, rate_weight_cost=5)
-    return app
+class TestCalculatorDeliveryTime(unittest.TestCase):
+    def setUp(self):
+        self.calculator = Calculator(base_delivery_cost=100, rate_distance_cost=10, rate_weight_cost=5)
 
-@patch('src.core.coupon.Coupon.get_coupon', side_effect=MockCoupon.get_coupon)
-def test_calculate_delivery_cost_without_coupon(mock_get_coupon, courier_app):
-    # Assuming no discount for the package
-    base_delivery_cost = 100
-    packages = [("PKG1", 10, 5, "NA")]
-    expected = [("PKG1", 150, 0)]
-    assert courier_app.prompt_delivery_cost(base_delivery_cost, packages) == expected, "Delivery cost calculation without coupon failed"
+    def test_total_cost_calculator(self):
+        # Without discount
+        self.assertEqual(
+            self.calculator.total_cost_calculator(distance1_in_km=5, discount_percentage=0, weight1_in_kg=5), 175)
+        # With discount
+        self.assertEqual(
+            self.calculator.total_cost_calculator(distance1_in_km=100, discount_percentage=10, weight1_in_kg=10), 665)
 
-@patch('src.core.coupon.Coupon.get_coupon', side_effect=MockCoupon.get_coupon)
-def test_calculate_delivery_cost_with_coupon(mock_get_coupon, courier_app):
-    # Assuming a discount for the package
-    base_delivery_cost = 100
-    packages = [("PKG1", 10, 5, "OFR001")]
-    expected = [("PKG1", 135, 15)]  # 10% discount on total cost of 150
-    assert courier_app.prompt_delivery_cost(base_delivery_cost, packages) == expected, "Delivery cost calculation with coupon failed"
+    def test_discount_amount_calculator(self):
+        self.calculator.total_cost_before_discount = 700  # Assuming this is set by a previous calculation
+        self.assertEqual(self.calculator.discount_amount_calculator(discount_percentage=10), 70)
+
+    def test_calculate_delivery_time(self):
+        trips = [
+            (['PKG1', 'PKG2'], 125),  # Example trip format: (Package IDs, Max Distance)
+            (['PKG3'], 100)
+        ]
+        packages = [
+            ['PKG1', 50, 30, 'OFR001', 0],  # Example package format: ID, Weight, Distance, Coupon, Time placeholder
+            ['PKG2', 75, 125, 'OFR008', 0],
+            ['PKG3', 175, 100, 'OFR003', 0]
+        ]
+        max_speed = 70
+        expected_delivery_times = [3.98, 1.78, 1.42]  # Example expected times
+
+        results = self.calculator.calculate_delivery_time(trips, packages, max_speed)
+        for package, expected_time in zip(results, expected_delivery_times):
+            self.assertAlmostEqual(package[-1], expected_time, places=2)
+
+
+class TestCourierAppIntegration(unittest.TestCase):
+    def setUp(self):
+        # Assuming there's a way to inject a Calculator and predefined Coupons into the CourierApp for testing
+        calculator = Calculator(base_delivery_cost=100, rate_distance_cost=10, rate_weight_cost=5)
+        # Mock coupons or preload them as needed
+        self.app = CourierApp()
+
+    def test_calculate_delivery_cost(self):
+        packages = [
+            ['PKG1', 5, 5, 'OFR001'],
+            ['PKG2', 15, 5, 'OFR002'],
+            ['PKG3', 10, 100, 'OFR003']
+        ]
+        # Assuming CourierApp has a method to process packages directly for testing
+        results = self.app.prompt_delivery_cost()
+        self.assertEqual(results, [
+            ('PKG1', 0, 175),
+            ('PKG2', 0, 275),
+            ('PKG3', 35, 665)
+        ])
+
+    def test_delivery_time_and_cost_integration(self):
+        packages = [
+            ['PKG1', 50, 30, 'OFR001'],
+            ['PKG2', 75, 125, 'OFR008'],
+            ['PKG3', 175, 100, 'OFR003'],
+            ['PKG4', 110, 60, 'OFR002'],
+            ['PKG5', 155, 95, 'NA']
+        ]
+        no_of_vehicles = 2
+        max_speed = 70
+        max_carriable_weight = 200
+
+        results = self.app.prompt_delivery_cost()
+        expected_outputs = [
+            ('PKG1', 0, 750, 3.98),
+            ('PKG2', 0, 1475, 1.78),
+            ('PKG3', 0, 2350, 1.42),
+            ('PKG4', 105, 1395, 0.85),
+            ('PKG5', 0, 2125, 4.19)
+        ]
+        for result, expected in zip(results, expected_outputs):
+            self.assertEqual(result[:-1], expected[:-1])  # Compare ID, discount, and cost
+            self.assertAlmostEqual(result[-1], expected[-1], places=2)  # Compare delivery time with rounding
+
+
+if __name__ == '__main__':
+    unittest.main()
