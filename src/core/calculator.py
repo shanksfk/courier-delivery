@@ -1,19 +1,31 @@
 import math
 
-from src.core.coupon import Coupon
-from src.core.utils.package import create_package_trip
-
 
 class Calculator:
 
     def __init__(self, rate_distance_cost, rate_weight_cost):
+        """
+        Initializes the Calculator class.
+        Args:
+            rate_distance_cost (float): The rate that is being charged for each kilometer of distance.
+            rate_weight_cost (float): The rate that is being charged for each kilogram of weight.
+        """
         self.total_cost_before_discount = None
         self.coupon = 'coupon'
         self.rate_distance_cost = rate_distance_cost
         self.rate_weight_cost = rate_weight_cost
 
     def total_cost_calculator(self, base_delivery_cost, distance1_in_km, discount_percentage, weight1_in_kg):
-
+        """
+        Calculates the total cost of a delivery, including distance, weight, and base cost.
+        Args:
+            base_delivery_cost (float): The base cost of the delivery.
+            distance1_in_km (float): The distance of the delivery, in kilometers.
+            discount_percentage (float): The discount percentage that is being applied to the delivery.
+            weight1_in_kg (float): The weight of the delivery, in kilograms.
+        Returns:
+            float: The total cost of the delivery, after any discounts are applied.
+        """
         distance_cost = self.distance_cost_calculator(distance1_in_km)
         weight_cost = self.weight_cost_calculator(weight1_in_kg)
         self.total_cost_before_discount = base_delivery_cost + distance_cost + weight_cost
@@ -23,22 +35,52 @@ class Calculator:
         return total_cost
 
     def distance_cost_calculator(self, distance1_in_km):
+        """
+        Calculates the cost of distance for a delivery.
+        Args:
+            distance1_in_km (float): The distance of the delivery, in kilometers.
+        Returns:
+            float: The cost of distance for the delivery.
+        """
         distance_cost = distance1_in_km * self.rate_distance_cost
 
         return distance_cost
 
     def weight_cost_calculator(self, weight1_in_kg):
+        """
+        Calculates the cost of weight for a delivery.
+        Args:
+            weight1_in_kg (float): The weight of the delivery, in kilograms.
+        Returns:
+            float: The cost of weight for the delivery.
+        """
         distance_cost = weight1_in_kg * self.rate_weight_cost
 
         return distance_cost
 
     def discount_amount_calculator(self, discount_percentage):
+        """
+        Calculates the discount amount for a delivery.
+        Args:
+            discount_percentage (float): The discount percentage that is being applied to the delivery.
+        Returns:
+            float: The discount amount for the delivery.
+        """
         # print(discount_percentage, self.total_cost_before_discount)
         discount_amount = float('{:.1f}'.format(discount_percentage / 100 * self.total_cost_before_discount))
 
         return discount_amount
 
     def calculate_delivery_time(self, trips, packages, max_speed):
+        """
+        Calculates the delivery time for a set of packages.
+        Args:
+            trips (list): A list of trips, where each trip is a list of packages.
+            packages (list): A list of packages, where each package is a list of information.
+            max_speed (float): The maximum speed of the vehicles that are being used for the delivery.
+        Returns:
+            list: A list of packages, where each package has an additional field indicating the delivery time.
+        """
         delivery_times = []
         available_vehicles = 2
         waiting_time_multiplier = 2
@@ -69,5 +111,3 @@ class Calculator:
                         package.append(package_delivery_time)
 
         return packages
-
-

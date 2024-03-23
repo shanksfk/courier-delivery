@@ -7,6 +7,10 @@ from src.core.utils.package import create_package_trip
 
 logger = logging.getLogger(__name__)
 
+"""
+This module contains the classes and functions for the courier application.
+"""
+
 
 class ProcessHandler:
 
@@ -19,45 +23,54 @@ class ProcessHandler:
         no_vehicles = int(no_vehicles)
         max_speed = int(max_speed)
         max_weight = int(max_weight)
+        try:
+            logger.debug(f'Processing data for calculations of delivery_time')
 
-        logger.debug(f'Processing data for calculations of delivery_time')
+            trips = create_package_trip(no_vehicles, packages, max_weight, max_speed)
+            packages_times = self.calculator.calculate_delivery_time(trips, packages, max_speed)
+            packages_costs = self.process_delivery_cost(base_delivery_cost, packages)
+            combined_details = []
+            logger.debug(f'process delivery cost: {packages_costs} delivery times: {packages_times}')
 
-        trips = create_package_trip(no_vehicles, packages, max_weight, max_speed)
-        packages_times = self.calculator.calculate_delivery_time(trips, packages, max_speed)
-        packages_costs = self.process_delivery_cost(base_delivery_cost, packages)
-        combined_details = []
-        logger.debug(f'process delivery cost: {packages_costs} delivery times: {packages_times}')
+            # Iterate over both lists simultaneously
+            for cost_info in packages_costs:
+                for time_info in packages_times:
 
-        # Iterate over both lists simultaneously
-        for cost_info in packages_costs:
-            for time_info in packages_times:
+                    if cost_info[0] == time_info[0]:  # Check if the package IDs match
+                        combined_details.append([cost_info[0], cost_info[1], cost_info[2], time_info[-1]])
 
-                if cost_info[0] == time_info[0]:  # Check if the package IDs match
-                    combined_details.append([cost_info[0], cost_info[1], cost_info[2], time_info[-1]])
+            logger.debug(f'delivery costs and times:  {combined_details}')
+            return combined_details
 
-        logger.debug(f'delivery costs and times:  {combined_details}')
-
-        return combined_details
+        except Exception as err:
+            logger.debug(f' error processing for delivery costs adn time: {err}')
 
     def process_delivery_cost(self, base_delivery_cost, packages):
         packages_cost = []
-        logger.debug(f'Processing for delivery cost and/or time')
-        for pkg_id, weight_in_kg, distance_in_km, offer_code, *rest in packages:
-            coupon = Coupon.get_coupon(offer_code)
-            if coupon and coupon.is_applicable(weight_in_kg, distance_in_km):
-                discount_percentage = coupon.discount_percentage
-            else:
-                discount_percentage = 0
+        try:
+            logger.debug(f'Processing for delivery cost and/or time')
+            for pkg_id, weight_in_kg, distance_in_km, offer_code, *rest in packages:
+                coupon = Coupon.get_coupon(offer_code)
+                if coupon and coupon.is_applicable(weight_in_kg, distance_in_km):
+                    discount_percentage = coupon.discount_percentage
+                else:
+                    discount_percentage = 0
 
-            total_cost = self.calculator.total_cost_calculator(base_delivery_cost, distance_in_km,
-                                                               discount_percentage, weight_in_kg)
-            discount_amount = self.calculator.discount_amount_calculator(discount_percentage)
-            packages_cost.append([pkg_id, discount_amount, total_cost])
+                total_cost = self.calculator.total_cost_calculator(base_delivery_cost, distance_in_km,
+                                                                   discount_percentage, weight_in_kg)
+                discount_amount = self.calculator.discount_amount_calculator(discount_percentage)
+                packages_cost.append([pkg_id, discount_amount, total_cost])
 
-        return packages_cost
+            return packages_cost
+
+        except Exception as err:
+            print(f'error processing for delivery costs: {err}')
+            logger.debug(f' error processing for delivery costs: {err}', exc_info=True)
 
 
 class CourierApp:
+    """Class representing the courier application"""
+
     def __init__(self):
         self.calculator = None
         self.processor = ProcessHandler()
@@ -66,6 +79,7 @@ class CourierApp:
 
     @staticmethod
     def coupon_creator():
+        """This function creates a coupon."""
         try:
             coupon_code = input("Enter coupon code (e.g., 'OFR001'): ")
             distance_range = input("Enter distance range (e.g., '0-10'): ")
@@ -78,23 +92,23 @@ class CourierApp:
             logger.error(f"Invalid discount percentage: {e}")
             print(f"Invalid discount percentage: {e}")
         except Exception as e:
-            logger.error(f"An error occurred while creating the coupon: {e}")
+            logger.error(f"An error occurred while creating the coupon: {e}", exc_info=True)
             print(f"An error occurred while creating the coupon: {e}")
 
     def prompt_for_package_details(self):
-        """Asks the user for the base delivery cost and the details of each package."""
+        """This function prompts the user for the base delivery cost and the details of each package."""
         try:
             base_delivery_cost, num_packages = map(int, input("Base delivery cost and number of packages: ").split())
             packages_details = [self.prompt_for_single_package() for _ in range(num_packages)]
-            print(packages_details)
+            print(f'packages_details you entered: {packages_details}')
             return base_delivery_cost, packages_details
         except ValueError as e:
-            logger.error(f"Input error: {e}")
+            logger.error(f"Input error: {e}", exc_info=True)
             print(f"Please enter valid inputs. Error: {e}")
 
     @staticmethod
     def prompt_for_single_package():
-        """Prompts the user for details of a single package and returns a tuple of the details."""
+        """This function prompts the user for details of a single package."""
         while True:
             try:
                 pkg_id, weight, distance, offer_code = input(
@@ -103,11 +117,11 @@ class CourierApp:
                 package = [pkg_id, float(weight), float(distance), offer_code]
                 return package
             except ValueError as e:
-                logger.error(f"Package detail error: {e}")
+                logger.error(f"Package detail error: {e}", exc_info=True)
                 print("Please enter valid package details.")
 
     def io_delivery_cost(self):
-        #  this part is input output for calculating delivery costs of the packages
+        """This function calculates the delivery cost of the packages."""
         try:
             logger.debug(f'initiating for calculations of delivery costs')
             base_delivery_cost, packages = self.prompt_for_package_details()
@@ -124,10 +138,11 @@ class CourierApp:
                 return packages_costs
 
         except Exception as error:
-            logger.error(f'{error}')
-            print(f"Error calculating cost: {error}")
+            logger.error(f'Error calculating cost: {error}', exc_info=True)
+            print(f"Error calculating cost: {error}", )
 
     def io_delivery_time(self):
+        """This function calculates the delivery time of the packages."""
         logger.debug(f'initiating for calculations of delivery times')
 
         self.time_and_cost = True
@@ -141,30 +156,35 @@ class CourierApp:
                                                             max_speed)
 
             for package in packages:
-                print(package)
                 pkg_id = package[0]
-                discount_amount = package[6]
-                total_cost = package[7]
-                delivery_time = package[5]
+                discount_amount = package[1]
+                total_cost = package[2]
+                delivery_time = package[3]
 
                 print(f"{pkg_id} {int(discount_amount)} {total_cost} {delivery_time}")
             return packages
 
         except Exception as err:
             print(f'Error in input delivery times: {err}')
-            logger.error(f'Error in input delivery times: {err}')
+            logger.error(f'Error in input delivery times: {err}', exc_info=True)
 
     def run(self):
-        logger.debug('Starting app to calculate delivery cost')
-        action = input(
-            'Enter "1" to calculate delivery cost or "2" to calculate delivery time or "3" to create a coupon:  ')
-        if action == "1":
-            self.io_delivery_cost()
-        elif action == "2":
-            self.time_and_cost = True
-            self.io_delivery_time()
-        elif action == "3":
-            self.coupon_creator()
+        """This function starts the courier application."""
+        while True:
+            logger.debug('Starting app to calculate delivery cost')
+            action = input(
+                'Enter "1" to calculate delivery cost, "2" to calculate delivery time, or "3" to create a coupon: ')
+            if action == "1":
+                self.io_delivery_cost()
+            elif action == "2":
+                self.time_and_cost = True
+                self.io_delivery_time()
+            elif action == "3":
+                self.coupon_creator()
+            else:
+                print("Invalid selection. Please try again.")
 
-        else:
-            print("Invalid selection. Please restart the app and choose either '1' or '2'.")
+            # After completing the selected action, ask the user if they want to continue
+            again = input("Do you want to perform another action? (yes/no): ").lower()
+            if again != "yes":
+                break  # Exit the loop if the user does not want to continue
