@@ -97,24 +97,34 @@ class CourierApp:
 
     def prompt_for_package_details(self):
         """This function prompts the user for the base delivery cost and the details of each package."""
-        try:
-            base_delivery_cost, num_packages = map(int, input("Base delivery cost and number of packages: ").split())
-            packages_details = [self.prompt_for_single_package() for _ in range(num_packages)]
-            print(f'packages_details you entered: {packages_details}')
-            return base_delivery_cost, packages_details
-        except ValueError as e:
-            logger.error(f"Input error: {e}", exc_info=True)
-            print(f"Please enter valid inputs. Error: {e}")
+        while True:
+            try:
+                while True:
+                    base_delivery_cost, num_packages = map(int, input("Base delivery cost and number of packages: ").split())
+                    if base_delivery_cost > 0 and num_packages > 0:
+                        break
+                    print("invalid: input contain negative numbers, enter positive numbers")
+                packages_details = [self.prompt_for_single_package() for _ in range(num_packages)]
+                print(f'packages_details you entered: {packages_details}')
+                return base_delivery_cost, packages_details
+            except ValueError as e:
+                logger.error(f"Input error: {e}", exc_info=True)
+                print(f"Please enter valid inputs. Error: {e}")
 
     @staticmethod
     def prompt_for_single_package():
         """This function prompts the user for details of a single package."""
         while True:
             try:
-                pkg_id, weight, distance, offer_code = input(
-                    "Enter package details likewise pkg-id, weight_in_kg, distance_in_kmm, coupon_code: PKG1 50 40 "
-                    "OFR001: ").split()
+                while True:
+                    pkg_id, weight, distance, offer_code = input(
+                        "Enter package details likewise pkg-id, weight_in_kg, distance_in_kmm, coupon_code: PKG1 50 40 "
+                        "OFR001: ").split()
+                    if float(weight) > 0 and float(distance) > 0:
+                        break
+                    print("invalid: input contain negative numbers, enter positive numbers")
                 package = [pkg_id, float(weight), float(distance), offer_code]
+
                 return package
             except ValueError as e:
                 logger.error(f"Package detail error: {e}", exc_info=True)
