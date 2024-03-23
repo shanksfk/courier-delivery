@@ -6,18 +6,17 @@ from src.core.utils.package import create_package_trip
 
 class Calculator:
 
-    def __init__(self, base_delivery_cost, rate_distance_cost, rate_weight_cost):
+    def __init__(self, rate_distance_cost, rate_weight_cost):
         self.total_cost_before_discount = None
         self.coupon = 'coupon'
-        self.base_delivery_cost = base_delivery_cost
         self.rate_distance_cost = rate_distance_cost
         self.rate_weight_cost = rate_weight_cost
 
-    def total_cost_calculator(self, distance1_in_km, discount_percentage, weight1_in_kg):
+    def total_cost_calculator(self, base_delivery_cost, distance1_in_km, discount_percentage, weight1_in_kg):
 
         distance_cost = self.distance_cost_calculator(distance1_in_km)
         weight_cost = self.weight_cost_calculator(weight1_in_kg)
-        self.total_cost_before_discount = self.base_delivery_cost + distance_cost + weight_cost
+        self.total_cost_before_discount = base_delivery_cost + distance_cost + weight_cost
         discount_amount = self.discount_amount_calculator(discount_percentage)
         total_cost = self.total_cost_before_discount - discount_amount
 
@@ -35,7 +34,7 @@ class Calculator:
 
     def discount_amount_calculator(self, discount_percentage):
         # print(discount_percentage, self.total_cost_before_discount)
-        discount_amount = discount_percentage / 100 * self.total_cost_before_discount
+        discount_amount = float('{:.1f}'.format(discount_percentage / 100 * self.total_cost_before_discount))
 
         return discount_amount
 

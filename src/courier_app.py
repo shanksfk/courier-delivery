@@ -7,45 +7,62 @@ from src.core.utils.package import create_package_trip
 
 logger = logging.getLogger(__name__)
 
-class IOHandler:
-
-
-
 
 class ProcessHandler:
 
+    def __init__(self):
+        self.calculator = Calculator(rate_distance_cost=RATE_DISTANCE_COST,
+                                     rate_weight_cost=RATE_WEIGHT_COST)
 
-    def calculate_delivery_time(self, base_delivery_cost, packages, no_vehicles, max_weight, max_speed):
+    def process_delivery_time(self, base_delivery_cost, packages, no_vehicles, max_weight, max_speed):
         # this method is to process from input into calculations of trips, delivery_time
+        no_vehicles = int(no_vehicles)
+        max_speed = int(max_speed)
+        max_weight = int(max_weight)
+
         logger.debug(f'Processing data for calculations of delivery_time')
+
         trips = create_package_trip(no_vehicles, packages, max_weight, max_speed)
-        calculator = Calculator(base_delivery_cost=base_delivery_cost,
-                                     rate_distance_cost=RATE_DISTANCE_COST, rate_weight_cost=RATE_WEIGHT_COST)
-        package_delivery_times = calculator.calculate_delivery_time(trips, packages, max_speed)
-        for package in package_delivery_times:
-            pkg_id = package[0]
-            weight_in_kg = package[1]
-            distance_in_km = package[2]
-            coupon = Coupon.get_coupon(package[3])
-            delivery_time = package[5]
+        packages_times = self.calculator.calculate_delivery_time(trips, packages, max_speed)
+        packages_costs = self.process_delivery_cost(base_delivery_cost, packages)
+        combined_details = []
+        logger.debug(f'process delivery cost: {packages_costs} delivery times: {packages_times}')
+
+        # Iterate over both lists simultaneously
+        for cost_info in packages_costs:
+            for time_info in packages_times:
+
+                if cost_info[0] == time_info[0]:  # Check if the package IDs match
+                    combined_details.append([cost_info[0], cost_info[1], cost_info[2], time_info[-1]])
+
+        logger.debug(f'delivery costs and times:  {combined_details}')
+
+        return combined_details
+
+    def process_delivery_cost(self, base_delivery_cost, packages):
+        packages_cost = []
+        logger.debug(f'Processing for delivery cost and/or time')
+        for pkg_id, weight_in_kg, distance_in_km, offer_code, *rest in packages:
+            coupon = Coupon.get_coupon(offer_code)
             if coupon and coupon.is_applicable(weight_in_kg, distance_in_km):
                 discount_percentage = coupon.discount_percentage
             else:
                 discount_percentage = 0
-            discount_amount = calculator.discount_amount_calculator(discount_percentage)
-            total_cost = calculator.total_cost_calculator(distance_in_km, discount_percentage, weight_in_kg)
-            package.append(discount_amount)
-            package.append(total_cost)
-        return packages
 
+            total_cost = self.calculator.total_cost_calculator(base_delivery_cost, distance_in_km,
+                                                               discount_percentage, weight_in_kg)
+            discount_amount = self.calculator.discount_amount_calculator(discount_percentage)
+            packages_cost.append([pkg_id, discount_amount, total_cost])
 
-
+        return packages_cost
 
 
 class CourierApp:
     def __init__(self):
         self.calculator = None
-        self.include_delivery_time = False
+        self.processor = ProcessHandler()
+        self.time_and_cost = False
+        self.time_only = False
 
     @staticmethod
     def coupon_creator():
@@ -81,90 +98,71 @@ class CourierApp:
         while True:
             try:
                 pkg_id, weight, distance, offer_code = input(
-                    "Enter package details likewise: PKG1 50 40 OFR001: ").split()
+                    "Enter package details likewise pkg-id, weight_in_kg, distance_in_kmm, coupon_code: PKG1 50 40 "
+                    "OFR001: ").split()
                 package = [pkg_id, float(weight), float(distance), offer_code]
                 return package
             except ValueError as e:
                 logger.error(f"Package detail error: {e}")
                 print("Please enter valid package details.")
 
-    def prompt_delivery_cost(self):
+    def io_delivery_cost(self):
+        #  this part is input output for calculating delivery costs of the packages
         try:
-            base_delivery_cost, packages_details = self.prompt_for_package_details()
-            packages_cost = []
-            for pkg_id, weight_in_kg, distance_in_km, offer_code in packages_details:
-                coupon = Coupon.get_coupon(offer_code)
-                if coupon and coupon.is_applicable(weight_in_kg, distance_in_km):
-                    discount_percentage = coupon.discount_percentage
-                else:
-                    discount_percentage = 0
-                self.calculator = Calculator(base_delivery_cost=base_delivery_cost,
-                                             rate_distance_cost=RATE_DISTANCE_COST,
-                                             rate_weight_cost=RATE_WEIGHT_COST)
-                total_cost = self.calculator.total_cost_calculator(distance_in_km,
-                                                                   discount_percentage, weight_in_kg)
-                discount_amount = self.calculator.discount_amount_calculator(discount_percentage)
-                packages_cost.append((pkg_id, total_cost, discount_amount))
-                if self.include_delivery_time:
-                    return packages_cost
-                else:
+            logger.debug(f'initiating for calculations of delivery costs')
+            base_delivery_cost, packages = self.prompt_for_package_details()
+
+            packages_costs = self.processor.process_delivery_cost(base_delivery_cost, packages)
+
+            if self.time_and_cost:
+                print(f'Include time and cost: {self.time_and_cost} packages: {packages}')
+                return packages_costs
+            else:
+                print(f'Include time and cost: {self.time_and_cost} packages: {packages}')
+                for pkg_id, discount_amount, total_cost in packages_costs:
                     print(f"{pkg_id} {discount_amount} {total_cost}")
+                return packages_costs
+
         except Exception as error:
             logger.error(f'{error}')
             print(f"Error calculating cost: {error}")
 
-    def prompt_delivery_time(self):
-        # try:
-        self.include_delivery_time = True
-        # packages_cost = self.prompt_delivery_cost()
-        base_delivery_cost, packages = self.prompt_for_package_details()
-        no_vehicles, max_speed, max_weight = input(
-            "Enter no of vehicles, max speed, max carriable weight, likewise: ").split()
+    def io_delivery_time(self):
+        logger.debug(f'initiating for calculations of delivery times')
 
-        # Convert inputs to the desired data types
-        no_vehicles = int(no_vehicles)
-        max_speed = int(max_speed)
-        max_weight = int(max_weight)
-        trips = create_package_trip(no_vehicles, packages, max_weight, max_speed)
-        # print(f'trips{trips}')
-        self.calculator = Calculator(base_delivery_cost=base_delivery_cost,
-                                     rate_distance_cost=RATE_DISTANCE_COST, rate_weight_cost=RATE_WEIGHT_COST)
-        package_delivery_times = self.calculator.calculate_delivery_time(trips, packages, max_speed)
-        for package in package_delivery_times:
-            pkg_id = package[0]
-            weight_in_kg = package[1]
-            distance_in_km = package[2]
-            coupon = Coupon.get_coupon(package[3])
-            delivery_time = package[5]
-            if coupon and coupon.is_applicable(weight_in_kg, distance_in_km):
-                discount_percentage = coupon.discount_percentage
-            else:
-                discount_percentage = 0
-            total_cost = self.calculator.total_cost_calculator(distance_in_km, discount_percentage, weight_in_kg)
-            discount_amount = self.calculator.discount_amount_calculator(discount_percentage)
+        self.time_and_cost = True
+        try:
 
-            # package[1] = int(discount_amount)
-            # package[2] = total_cost
-            # package.pop(3)
-            # package.pop(3)
-            # package.pop(5)
+            base_delivery_cost, packages = self.prompt_for_package_details()
+            no_vehicles, max_speed, max_weight = input(
+                "Enter no of vehicles, max speed, max weight, likewise: ").split()
 
-            print(f"{pkg_id} {int(discount_amount)} {total_cost} {delivery_time}")
+            packages = self.processor.process_delivery_time(base_delivery_cost, packages, no_vehicles, max_weight,
+                                                            max_speed)
 
-        return trips  # Assuming 50 km/h as average speed for delivery
-        # except Exception as err:
-        #     logger.error(f'{err}')
-        #     print(f"Error calculating delivery time: {err}")
+            for package in packages:
+                print(package)
+                pkg_id = package[0]
+                discount_amount = package[6]
+                total_cost = package[7]
+                delivery_time = package[5]
+
+                print(f"{pkg_id} {int(discount_amount)} {total_cost} {delivery_time}")
+            return packages
+
+        except Exception as err:
+            print(f'Error in input delivery times: {err}')
+            logger.error(f'Error in input delivery times: {err}')
 
     def run(self):
         logger.debug('Starting app to calculate delivery cost')
         action = input(
             'Enter "1" to calculate delivery cost or "2" to calculate delivery time or "3" to create a coupon:  ')
         if action == "1":
-            self.prompt_delivery_cost()
+            self.io_delivery_cost()
         elif action == "2":
-            self.include_delivery_time = True
-            self.prompt_delivery_time()
+            self.time_and_cost = True
+            self.io_delivery_time()
         elif action == "3":
             self.coupon_creator()
 

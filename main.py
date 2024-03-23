@@ -7,11 +7,11 @@ def configure_logging():
         level=logging.DEBUG,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         filename='app.log',  # log to a file
-        filemode='w'  # overwrite the log file each time
+        filemode='w'  # overwrite2 the log file each time
     )
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     configure_logging()
     app = CourierApp()
     app.run()
