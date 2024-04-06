@@ -1,5 +1,5 @@
 import logging
-from src.courier_app import CourierApp
+from src.courier_io import CourierIO
 
 
 def configure_logging():
@@ -13,5 +13,5 @@ def configure_logging():
 
 if __name__ == "__main__":
     configure_logging()
-    app = CourierApp()
+    app = CourierIO()
     app.run()

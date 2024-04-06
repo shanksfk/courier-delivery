@@ -8,11 +8,31 @@ This module is to check coupon validity, and get its amount of discounted, wheth
 
 """
 
+
 class Coupon:
     """
     This class is to create and manage coupons and apply the correct discount accordingly
     """
-    COUPON_FILE = 'src/core/coupons.json'
+    COUPON_DICTS = [
+        {
+            "coupon_name": "OFR001",
+            "weight_range": "70-200",
+            "distance_range": "0-200",
+            "discount_percentage": 10
+        },
+        {
+            "coupon_name": "OFR002",
+            "weight_range": "100-250",
+            "distance_range": "50-250",
+            "discount_percentage": 7
+        },
+        {
+            "coupon_name": "OFR003",
+            "weight_range": "10-150",
+            "distance_range": "50-250",
+            "discount_percentage": 5
+        }
+    ]
 
     def __init__(self, coupon_name, weight_range, distance_range, discount_percentage):
         """
@@ -31,11 +51,9 @@ class Coupon:
 
         """
         new_coupon = cls(coupon_name, weight_range, distance_range, discount_percentage)
-        with open(cls.COUPON_FILE, 'r') as file:
-            coupons = json.load(file)
-        coupons.append(new_coupon.to_dict())
-        with open(cls.COUPON_FILE, 'w') as file:
-            json.dump(coupons, file, indent=4)
+
+        cls.COUPON_DICTS.append(new_coupon.to_dict())
+        print(f'New coupon created: {cls.COUPON_DICTS[-1]}')
 
     @classmethod
     def get_coupon(cls, coupon_name):
@@ -43,8 +61,8 @@ class Coupon:
         Get the details of a coupon with the given name from the coupons file
 
         """
-        with open(cls.COUPON_FILE, 'r') as file:
-            coupons = json.load(file)
+
+        coupons = cls.COUPON_DICTS
         for coupon_data in coupons:
             if coupon_data['coupon_name'] == coupon_name:
                 return cls(**coupon_data)
