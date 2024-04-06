@@ -1,6 +1,6 @@
 import logging
 from src.core import RATE_DISTANCE_COST, RATE_WEIGHT_COST
-from src.core.calculator import CostCalculator, DistanceCalculator, TimeCalculator
+from src.core.calculator import CostCalculator, DistanceCalculator, TimeCalculator, DiscountCalculator
 from src.core.coupon import Coupon
 
 logger = logging.getLogger(__name__)
@@ -54,9 +54,12 @@ class ProcessHandler:
                     discount_percentage = coupon.discount_percentage
                 else:
                     discount_percentage = 0
-                total_cost = self.cost_calculator.total_cost_calculator(base_delivery_cost, distance_in_km,
-                                                                        discount_percentage, weight_in_kg)
-                discount_amount = self.cost_calculator.discount_amount_calculator(discount_percentage)
+                total_cost_before_discount = self.cost_calculator.total_cost_before_calculator(base_delivery_cost,
+                                                                                               distance_in_km,
+                                                                                               weight_in_kg)
+                discount_amount = DiscountCalculator.calculate_discount_amount(total_cost_before_discount,
+                                                                               discount_percentage)
+                total_cost = self.cost_calculator.total_cost_after_discount(discount_amount)
                 packages_cost.append([pkg_id, discount_amount, total_cost])
 
             return packages_cost
