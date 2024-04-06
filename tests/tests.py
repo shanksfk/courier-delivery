@@ -52,7 +52,7 @@ class PositiveTestCourierAppIntegration(unittest.TestCase):
             self.assertEqual(result[:-1], expected[:-1])
             self.assertAlmostEqual(result[-1], expected[-1], places=2)
 
-    def test_brute_force_delivery_time_and_cost(self):
+    def test_combination_delivery_time_and_cost(self):
 
         base_delivery_cost = 100
 
